@@ -91,14 +91,11 @@ private:
     static std::string to_ipv4_query(const std::string& addr)
     {
         auto bytes = asio::ip::make_address_v4(addr).to_bytes();
-        if (bytes.empty()) {
-            throw std::runtime_error("Invalid ipv4 address");
-        }
         std::string query {};
         size_t i = bytes.size() - 1;
         while (true) {
             uint8_t byte = bytes[i];
-            query.append(std::move(uint8_to_string(byte)));
+            query.append(uint8_to_string(byte));
             query.push_back('.');
             if (i == 0) {
                 break;
@@ -112,9 +109,6 @@ private:
     static std::string to_ipv6_query(const std::string& addr)
     {
         auto bytes = asio::ip::make_address_v4(addr).to_bytes();
-        if (bytes.empty()) {
-            throw std::runtime_error("Invalid ipv6 address");
-        }
         std::string query {};
         size_t i = bytes.size() - 1;
         while (true) {
@@ -234,8 +228,8 @@ private:
 
 public:
     resolver(
-        std::shared_ptr<asio::io_context> context,
-        asio::ip::address dns_server,
+        const std::shared_ptr<asio::io_context>& context,
+        const asio::ip::address& dns_server,
         std::shared_ptr<P> pool,
         std::chrono::milliseconds retry_interval = std::chrono::milliseconds { 100 },
         uint8_t retry_times = 1)
@@ -254,8 +248,8 @@ public:
     }
 
     resolver(
-        std::shared_ptr<asio::io_context> context,
-        std::string dns_server,
+        const std::shared_ptr<asio::io_context>& context,
+        const std::string& dns_server,
         std::shared_ptr<P> pool,
         std::chrono::milliseconds retry_interval = std::chrono::milliseconds { 100 },
         uint8_t retry_times = 1)

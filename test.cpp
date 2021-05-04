@@ -1,9 +1,4 @@
 #include "include/dns_resolver.h"
-#include "thread_pool.h"
-
-#include <asio.hpp>
-#include <fmt/core.h>
-#include <memory>
 
 #define THREAD_NUM 3
 
@@ -13,20 +8,20 @@ std::shared_ptr<dns::resolver<asio::io_context>> resolver;
 
 std::vector<std::thread> threads;
 
-void nothing(dns::result err, std::string domain, std::vector<std::string> res)
+void nothing(const dns::result& err, const std::string& domain, const std::vector<std::string>& res)
 {
 }
 
-void print_one_line(dns::result err, std::string domain, std::vector<std::string> res)
+void print_one_line(const dns::result& err, const std::string& domain, const std::vector<std::string>& res)
 {
     std::cout << "\n";
 }
 
-void print(dns::result err, std::string domain, std::vector<std::string> res)
+void print(dns::result& err, const std::string& domain, const std::vector<std::string>& res)
 {
     if (err.is_ok()) {
         std::cout << "domain: " << domain << std::endl;
-        for (auto ip : res) {
+        for (const auto& ip : res) {
             std::cout << "ip: " << ip << std::endl;
         }
     } else {
@@ -63,9 +58,9 @@ int main(int argc, char const* argv[])
         resolver.reset(new dns::resolver<asio::io_context>(context, servers[0],
             context));
         for (auto i = 0; i != THREAD_NUM; i++) {
-            threads.push_back(std::thread([]() {
+            threads.emplace_back([]() {
                 context->run();
-            }));
+            });
         }
         for (auto i = 0; i != 3000; i++) {
             resolver->resolve_domain("www.baidu.com", nothing);

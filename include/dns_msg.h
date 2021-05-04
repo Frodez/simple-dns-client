@@ -135,10 +135,10 @@ std::string dns_resource::to_json_string()
 struct dns_msg {
 private:
     typedef std::unordered_map<std::string, uint16_t> str_table;
-    static bool is_compress_flag(uint8_t* buf);
-    static uint16_t read_compress_flag(uint8_t* buf);
+    static bool is_compress_flag(const uint8_t* buf);
+    static uint16_t read_compress_flag(const uint8_t* buf);
     static size_t write_compress_flag(uint8_t* buf, uint16_t flag);
-    static size_t write_raw_str(uint8_t* buf, std::string str);
+    static size_t write_raw_str(uint8_t* buf, const std::string& str);
     static std::string read_ipv4(uint8_t* buf);
     static std::string read_ipv6(uint8_t* buf);
     static std::string read_hex(uint8_t* buf, uint16_t len);
@@ -161,12 +161,12 @@ public:
     std::string to_json_string();
 };
 
-bool dns_msg::is_compress_flag(uint8_t* buf)
+bool dns_msg::is_compress_flag(const uint8_t* buf)
 {
     return (buf[0] & 0xC0) == 0xC0;
 }
 
-uint16_t dns_msg::read_compress_flag(uint8_t* buf)
+uint16_t dns_msg::read_compress_flag(const uint8_t* buf)
 {
     uint16_t compress_offset = 0;
     compress_offset = ((uint16_t)buf[0] << 8) | (uint16_t)buf[1];
@@ -182,7 +182,7 @@ size_t dns_msg::write_compress_flag(uint8_t* buf, uint16_t flag)
     return 2;
 }
 
-size_t dns_msg::write_raw_str(uint8_t* buf, std::string str)
+size_t dns_msg::write_raw_str(uint8_t* buf, const std::string& str)
 {
     uint8_t str_len = str.length();
     size_t offset = 0;

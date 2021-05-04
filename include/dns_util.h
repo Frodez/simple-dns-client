@@ -21,8 +21,8 @@ private:
     result(uint8_t code, std::string&& msg);
 
 public:
-    std::string message();
-    bool is_ok();
+    const std::string& message();
+    [[nodiscard]] bool is_ok() const;
     static result ok();
     static result error(std::string&& msg);
 };
@@ -33,12 +33,12 @@ result::result(uint8_t code, std::string&& msg)
 {
 }
 
-std::string result::message()
+const std::string& result::message()
 {
     return msg;
 }
 
-bool result::is_ok()
+bool result::is_ok() const
 {
     return code == 0;
 }
@@ -191,7 +191,7 @@ void write_uint8(uint8_t* buf, uint8_t b)
     buf[0] = b;
 }
 
-uint16_t read_uint16(uint8_t* buf)
+uint16_t read_uint16(const uint8_t* buf)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     return ((uint16_t)buf[0]) << 8 | ((uint16_t)buf[1]);
@@ -215,7 +215,7 @@ void write_uint16(uint8_t* buf, uint16_t b)
 #endif
 }
 
-uint32_t read_uint32(uint8_t* buf)
+uint32_t read_uint32(const uint8_t* buf)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     return ((uint32_t)buf[0]) << 24 | ((uint32_t)buf[1]) << 16 | ((uint32_t)buf[2]) << 8 | ((uint32_t)buf[3]);
