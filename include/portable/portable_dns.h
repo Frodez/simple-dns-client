@@ -1,5 +1,5 @@
-#ifndef PORTABLE_SYS_DNS_SERVER_H
-#define PORTABLE_SYS_DNS_SERVER_H
+#ifndef PORTABLE_DNS_H
+#define PORTABLE_DNS_H
 
 #include "portable_platform.h"
 
