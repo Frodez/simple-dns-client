@@ -256,7 +256,8 @@ public:
     {
         auto servers = get_sys_default_servers();
         if (servers.empty()) {
-            throw std::runtime_error { "there is no dns server of the system." };
+            throw std::runtime_error { "There is no dns server of the system. "
+                                       "You must set an address of dns server." };
         }
         resolver(context, asio::ip::make_address(servers[0]), pool, retry_interval, retry_times);
     }
@@ -287,7 +288,7 @@ public:
         // do handle in the thread which io_context is running.
         context->post([this, domain, callback]() {
             std::shared_ptr<asio::steady_timer> timer { new asio::steady_timer(*context) };
-            handle_domain(domain, callback, timer, retry_times);
+            handle_domain(domain, callback, timer, retry_times - 1);
         });
     }
 
@@ -324,12 +325,12 @@ public:
         if (m == mode::ipv4) {
             context->post([this, addr, callback]() {
                 std::shared_ptr<asio::steady_timer> timer { new asio::steady_timer(*context) };
-                handle_ipv4_addr(addr, callback, timer, retry_times);
+                handle_ipv4_addr(addr, callback, timer, retry_times - 1);
             });
         } else {
             context->post([this, addr, callback]() {
                 std::shared_ptr<asio::steady_timer> timer { new asio::steady_timer(*context) };
-                handle_ipv6_addr(addr, callback, timer, retry_times);
+                handle_ipv6_addr(addr, callback, timer, retry_times - 1);
             });
         }
     }
