@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <new>
 #include <regex>
 #include <tuple>
 #include <vector>
@@ -18,43 +19,32 @@ class result {
 private:
     uint8_t code;
     std::string msg;
-    result(uint8_t code, std::string&& msg);
+    result(uint8_t code, std::string&& msg)
+        : code { code }
+        , msg { msg }
+    {
+    }
 
 public:
-    const std::string& message();
-    [[nodiscard]] bool is_ok() const;
-    static result ok();
-    static result error(std::string&& msg);
+    const std::string& message()
+    {
+        return msg;
+    }
+    [[nodiscard]] bool is_ok() const
+    {
+        return code == 0;
+    }
+    static result ok()
+    {
+        return { 0, "ok" };
+    }
+    static result error(std::string&& msg)
+    {
+        return { 1, std::move(msg) };
+    }
 };
 
-result::result(uint8_t code, std::string&& msg)
-    : code { code }
-    , msg { msg }
-{
-}
-
-const std::string& result::message()
-{
-    return msg;
-}
-
-bool result::is_ok() const
-{
-    return code == 0;
-}
-
-result result::ok()
-{
-    return { 0, "ok" };
-}
-
-result
-result::error(std::string&& msg = "")
-{
-    return { 1, std::move(msg) };
-}
-
-std::string uint8_to_string(uint8_t num)
+inline std::string uint8_to_string(uint8_t num)
 {
     static const std::string table[256] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
         "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27",
@@ -77,7 +67,7 @@ std::string uint8_to_string(uint8_t num)
     return table[num];
 }
 
-char uint4_to_char(uint8_t num)
+inline char uint4_to_char(uint8_t num)
 {
     static const char table[16] = { '0', '1', '2', '3', '4', '5',
         '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
@@ -85,7 +75,7 @@ char uint4_to_char(uint8_t num)
     return table[num];
 }
 
-std::vector<std::string> get_sys_default_servers()
+inline std::vector<std::string> get_sys_default_servers()
 {
 #if (defined(__WINDOWS__) && !defined(__MINGW64__))
 //https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getnetworkparams
@@ -97,13 +87,13 @@ std::vector<std::string> get_sys_default_servers()
     DWORD dwRetVal;
     IP_ADDR_STRING* pIPAddr;
     if (pFixedInfo == NULL) {
-        throw std::runtime_error { "Error allocating memory needed to call GetNetworkParams\n" };
+        throw std::bad_alloc {};
     }
     if (GetNetworkParams(pFixedInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW) {
         FREE(pFixedInfo);
         pFixedInfo = (FIXED_INFO*)MALLOC(sizeof(FIXED_INFO));
         if (pFixedInfo == NULL) {
-            throw std::runtime_error { "Error allocating memory needed to call GetNetworkParams\n" };
+            throw std::bad_alloc {};
         }
     }
     if (dwRetVal = GetNetworkParams(pFixedInfo, &ulOutBufLen) != NO_ERROR) {
@@ -116,6 +106,9 @@ std::vector<std::string> get_sys_default_servers()
     while (pIPAddr) {
         res.push_back(std::move(std::string { pIPAddr->IpAddress.String }));
         pIPAddr = pIPAddr->Next;
+    }
+    if (pFixedInfo) {
+        FREE(pFixedInfo);
     }
     return res;
 #else
@@ -144,14 +137,14 @@ std::vector<std::string> get_sys_default_servers()
 #endif
 }
 
-bool is_valid_domain_name(const std::string& domain)
+inline bool is_valid_domain_name(const std::string& domain)
 {
     //https://www.geeksforgeeks.org/how-to-validate-a-domain-name-using-regular-expression/
     static const std::regex pattern { "^(?!-)[A-Za-z0-9-]+([\\-\\.]{1}[a-z0-9]+)*\\.[A-Za-z]{2,6}$" };
     return !domain.empty() && std::regex_match(domain, pattern);
 }
 
-bool is_valid_ipv4_addr(const std::string& addr)
+inline bool is_valid_ipv4_addr(const std::string& addr)
 {
     //https://stackoverflow.com/questions/53497/regular-expression-that-matches-valid-ipv6-addresses
     static const std::regex pattern { "((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.)"
@@ -159,7 +152,7 @@ bool is_valid_ipv4_addr(const std::string& addr)
     return !addr.empty() && std::regex_match(addr, pattern);
 }
 
-bool is_valid_ipv6_addr(const std::string& addr)
+inline bool is_valid_ipv6_addr(const std::string& addr)
 {
     //https://stackoverflow.com/questions/53497/regular-expression-that-matches-valid-ipv6-addresses
     static const std::regex pattern { "(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|"
@@ -181,17 +174,17 @@ bool is_valid_ipv6_addr(const std::string& addr)
     return !addr.empty() && std::regex_match(addr, pattern);
 }
 
-uint8_t read_uint8(uint8_t* buf)
+inline uint8_t read_uint8(uint8_t* buf)
 {
     return buf[0];
 }
 
-void write_uint8(uint8_t* buf, uint8_t b)
+inline void write_uint8(uint8_t* buf, uint8_t b)
 {
     buf[0] = b;
 }
 
-uint16_t read_uint16(const uint8_t* buf)
+inline uint16_t read_uint16(const uint8_t* buf)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     return ((uint16_t)buf[0]) << 8 | ((uint16_t)buf[1]);
@@ -202,7 +195,7 @@ uint16_t read_uint16(const uint8_t* buf)
 #endif
 }
 
-void write_uint16(uint8_t* buf, uint16_t b)
+inline void write_uint16(uint8_t* buf, uint16_t b)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     buf[0] = (b >> 8) & 0xFF;
@@ -215,7 +208,7 @@ void write_uint16(uint8_t* buf, uint16_t b)
 #endif
 }
 
-uint32_t read_uint32(const uint8_t* buf)
+inline uint32_t read_uint32(const uint8_t* buf)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     return ((uint32_t)buf[0]) << 24 | ((uint32_t)buf[1]) << 16 | ((uint32_t)buf[2]) << 8 | ((uint32_t)buf[3]);
@@ -226,7 +219,7 @@ uint32_t read_uint32(const uint8_t* buf)
 #endif
 }
 
-void write_uint32(uint8_t* buf, uint32_t b)
+inline void write_uint32(uint8_t* buf, uint32_t b)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     buf[0] = (b >> 24) & 0xFF;
@@ -243,7 +236,7 @@ void write_uint32(uint8_t* buf, uint32_t b)
 #endif
 }
 
-void read_bytes(uint8_t* buf, uint8_t* dest, size_t bytes_per_unit, size_t units)
+inline void read_bytes(uint8_t* buf, uint8_t* dest, size_t bytes_per_unit, size_t units)
 {
     if (bytes_per_unit == 0 || units == 0) {
         return;
@@ -270,7 +263,7 @@ void read_bytes(uint8_t* buf, uint8_t* dest, size_t bytes_per_unit, size_t units
     }
 }
 
-void write_bytes(uint8_t* buf, uint8_t* src, size_t bytes_per_unit, size_t units)
+inline void write_bytes(uint8_t* buf, uint8_t* src, size_t bytes_per_unit, size_t units)
 {
     if (bytes_per_unit == 0 || units == 0) {
         return;

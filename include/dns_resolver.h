@@ -98,7 +98,8 @@ private:
         query.append(uint8_to_string(bytes[1]));
         query.push_back('.');
         query.append(uint8_to_string(bytes[0]));
-        query.append(".in-addr.arpa"); //affix
+        query.push_back('.');
+        query.append("in-addr.arpa"); //affix
         return query;
     }
 
@@ -244,18 +245,20 @@ public:
         std::shared_ptr<P> pool,
         std::chrono::milliseconds retry_interval = std::chrono::milliseconds { 100 },
         uint8_t retry_times = 1)
-        : context { context }
-        , socket { *context, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0) }
-        , endpoint { asio::ip::make_address(dns_server), DNS_PORT }
-        , retry_interval { retry_interval }
-        , retry_times { retry_times }
-        , cache {}
-        , random_engine {}
-        , distribution { 0, UINT16_MAX }
-        , pool { pool }
     {
-        // do receive in the thread which io_context is running.
-        context->post(std::bind(&resolver::receive, this));
+        resolver(context, asio::ip::make_address(dns_server), pool, retry_interval, retry_times);
+    }
+    resolver(
+        const std::shared_ptr<asio::io_context>& context,
+        std::shared_ptr<P> pool,
+        std::chrono::milliseconds retry_interval = std::chrono::milliseconds { 100 },
+        uint8_t retry_times = 1)
+    {
+        auto servers = get_sys_default_servers();
+        if (servers.empty()) {
+            throw std::runtime_error { "there is no dns server of the system." };
+        }
+        resolver(context, asio::ip::make_address(servers[0]), pool, retry_interval, retry_times);
     }
 
     ~resolver()

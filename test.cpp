@@ -56,7 +56,7 @@ int main(int argc, char const* argv[])
         std::cout << "choose server: " << servers[0] << std::endl;
         context.reset(new asio::io_context(THREAD_NUM));
         resolver.reset(new dns::resolver<asio::io_context>(context, servers[0],
-            context));
+            context)); //use the asio::io_context as the thread pool to execuate callbacks
         for (auto i = 0; i != THREAD_NUM; i++) {
             threads.emplace_back([]() {
                 context->run();
