@@ -4,17 +4,17 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <stdexcept>
 #include <thread>
 #include <vector>
-#include <iostream>
 
 class thread_pool {
 public:
-    thread_pool(size_t);
+    explicit thread_pool(size_t);
     template <class F, class... Args>
     auto post(F&& f, Args&&... args) -> std::future<typename std::result_of<F(Args...)>::type>;
     ~thread_pool();
@@ -36,7 +36,7 @@ inline thread_pool::thread_pool(size_t threads)
     : stop(false)
 {
     for (size_t i = 0; i < threads; ++i)
-        workers.push_back(std::thread([this] {
+        workers.emplace_back([this] {
             //std::cout << "pool thread:" << std::this_thread::get_id() << std::endl;
             while (true) {
                 std::function<void()> task;
@@ -53,7 +53,7 @@ inline thread_pool::thread_pool(size_t threads)
                 }
                 task();
             }
-        }));
+        });
 }
 
 // add new work item to the pool

@@ -11,8 +11,8 @@
 
 #elif (defined(_MSC_VER))
 
-#include <winsock2.h>
 #include <iphlpapi.h>
+#include <winsock2.h>
 #pragma comment(lib, "IPHLPAPI.lib")
 
 #endif
