@@ -54,10 +54,11 @@ template <class P>
 concept has_commit = has_commit_no_bind<P> || has_commit_bind<P>;
 
 template <class P>
-concept valid_thread_pool = std::is_destructible_v<P> && (has_post<P> != has_commit<P>);
+concept valid_thread_pool = std::is_destructible_v<P> &&(has_post<P> != has_commit<P>);
 
 template <class P>
-requires valid_thread_pool<P> class resolver {
+requires valid_thread_pool<P>
+class resolver {
 private:
     std::shared_ptr<asio::io_context> context;
     asio::ip::udp::socket socket;
