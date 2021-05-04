@@ -54,11 +54,10 @@ template <class P>
 concept has_commit = has_commit_no_bind<P> || has_commit_bind<P>;
 
 template <class P>
-concept valid_thread_pool = std::is_destructible_v<P> &&(has_post<P> != has_commit<P>);
+concept valid_thread_pool = std::is_destructible_v<P> && (has_post<P> != has_commit<P>);
 
 template <class P>
-requires valid_thread_pool<P>
-class resolver {
+requires valid_thread_pool<P> class resolver {
 private:
     std::shared_ptr<asio::io_context> context;
     asio::ip::udp::socket socket;
@@ -90,28 +89,23 @@ private:
 
     static std::string to_ipv4_query(const std::string& addr)
     {
-        auto bytes = asio::ip::make_address_v4(addr).to_bytes();
-        std::string query {};
-        size_t i = bytes.size() - 1;
-        while (true) {
-            uint8_t byte = bytes[i];
-            query.append(uint8_to_string(byte));
-            query.push_back('.');
-            if (i == 0) {
-                break;
-            }
-            i--;
-        }
-        query.append("in-addr.arpa"); //affix
+        std::array<unsigned char, 4> bytes = asio::ip::make_address_v4(addr).to_bytes();
+        std::string query { uint8_to_string(bytes[3]) };
+        query.push_back('.');
+        query.append(uint8_to_string(bytes[2]));
+        query.push_back('.');
+        query.append(uint8_to_string(bytes[1]));
+        query.push_back('.');
+        query.append(uint8_to_string(bytes[0]));
+        query.append(".in-addr.arpa"); //affix
         return query;
     }
 
     static std::string to_ipv6_query(const std::string& addr)
     {
-        auto bytes = asio::ip::make_address_v4(addr).to_bytes();
+        std::array<unsigned char, 16> bytes = asio::ip::make_address_v6(addr).to_bytes();
         std::string query {};
-        size_t i = bytes.size() - 1;
-        while (true) {
+        for (int i = 15; i != 0; i--) {
             auto& byte = bytes[i];
             uint8_t low = byte & 0x0f;
             query.push_back(uint4_to_char(low));
@@ -119,10 +113,6 @@ private:
             uint8_t high = (byte >> 4) & 0x0f;
             query.push_back(uint4_to_char(high));
             query.push_back('.');
-            if (i == 0) {
-                break;
-            }
-            i--;
         }
         query.append("ip6.arpa"); //affix
         return query;
