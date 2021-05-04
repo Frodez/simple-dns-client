@@ -1,5 +1,5 @@
-#ifndef DNS_RESOLVER
-#define DNS_RESOLVER
+#ifndef DNS_RESOLVER_H
+#define DNS_RESOLVER_H
 
 #include "dns_cache_manager.h"
 #include "dns_msg.h"
