@@ -158,15 +158,22 @@ private:
     {
         auto res = cache.get(domain);
         if (res.has_value()) {
-            timer->cancel();
+            if (timer) {
+                timer->cancel();
+            }
             // do callback in the thread pool.
             post(callback, result::ok(), domain, std::move(res.value()));
         } else if (left_times == 0) {
-            timer->cancel();
+            if (timer) {
+                timer->cancel();
+            }
             // do callback in the thread pool.
             post(callback, result::error("Timeout"), domain, std::vector<std::string> {});
         } else {
             send_domain(domain);
+            if (!timer) {
+                timer.reset(new asio::steady_timer { *context });
+            }
             timer->expires_from_now(retry_interval);
             timer->async_wait(std::bind(&resolver::handle_domain, this, domain, callback, timer, left_times - 1));
         }
@@ -181,15 +188,22 @@ private:
         auto query = to_ipv4_query(addr);
         auto res = cache.get(query);
         if (res.has_value()) {
-            timer->cancel();
+            if (timer) {
+                timer->cancel();
+            }
             // do callback in the thread pool.
             post(callback, result::ok(), addr, std::move(res.value()));
         } else if (left_times == 0) {
-            timer->cancel();
+            if (timer) {
+                timer->cancel();
+            }
             // do callback in the thread pool.
             post(callback, result::error("Timeout"), addr, std::vector<std::string> {});
         } else {
             send_ipaddr(query);
+            if (!timer) {
+                timer.reset(new asio::steady_timer { *context });
+            }
             timer->expires_from_now(retry_interval);
             timer->async_wait(std::bind(&resolver::handle_ipv4_addr, this, addr, callback, timer, left_times - 1));
         }
@@ -204,15 +218,22 @@ private:
         auto query = to_ipv6_query(addr);
         auto res = cache.get(query);
         if (res.has_value()) {
-            timer->cancel();
+            if (timer) {
+                timer->cancel();
+            }
             // do callback in the thread pool.
             post(callback, result::ok(), addr, std::move(res.value()));
         } else if (left_times == 0) {
-            timer->cancel();
+            if (timer) {
+                timer->cancel();
+            }
             // do callback in the thread pool.
             post(callback, result::error("Timeout"), addr, std::vector<std::string> {});
         } else {
             send_ipaddr(query);
+            if (!timer) {
+                timer.reset(new asio::steady_timer { *context });
+            }
             timer->expires_from_now(retry_interval);
             timer->async_wait(std::bind(&resolver::handle_ipv6_addr, this, addr, callback, timer, left_times - 1));
         }
@@ -245,21 +266,41 @@ public:
         std::shared_ptr<P> pool,
         std::chrono::milliseconds retry_interval = std::chrono::milliseconds { 100 },
         uint8_t retry_times = 1)
+        : context { context }
+        , socket { *context, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0) }
+        , endpoint { asio::ip::make_address(dns_server), DNS_PORT }
+        , retry_interval { retry_interval }
+        , retry_times { retry_times }
+        , cache {}
+        , random_engine {}
+        , distribution { 0, UINT16_MAX }
+        , pool { pool }
     {
-        resolver(context, asio::ip::make_address(dns_server), pool, retry_interval, retry_times);
+        // do receive in the thread which io_context is running.
+        context->post(std::bind(&resolver::receive, this));
     }
     resolver(
         const std::shared_ptr<asio::io_context>& context,
         std::shared_ptr<P> pool,
         std::chrono::milliseconds retry_interval = std::chrono::milliseconds { 100 },
         uint8_t retry_times = 1)
+        : context { context }
+        , socket { *context, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0) }
+        , retry_interval { retry_interval }
+        , retry_times { retry_times }
+        , cache {}
+        , random_engine {}
+        , distribution { 0, UINT16_MAX }
+        , pool { pool }
     {
         auto servers = get_sys_default_servers();
         if (servers.empty()) {
             throw std::runtime_error { "There is no dns server of the system. "
                                        "You must set an address of dns server." };
         }
-        resolver(context, asio::ip::make_address(servers[0]), pool, retry_interval, retry_times);
+        endpoint = asio::ip::udp::endpoint { asio::ip::make_address(servers[0]), DNS_PORT };
+        // do receive in the thread which io_context is running.
+        context->post(std::bind(&resolver::receive, this));
     }
 
     ~resolver()
@@ -287,7 +328,7 @@ public:
         }
         // do handle in the thread which io_context is running.
         context->post([this, domain, callback]() {
-            std::shared_ptr<asio::steady_timer> timer { new asio::steady_timer(*context) };
+            std::shared_ptr<asio::steady_timer> timer {};
             handle_domain(domain, callback, timer, retry_times - 1);
         });
     }
@@ -324,12 +365,12 @@ public:
         // do handle in the thread which io_context is running.
         if (m == mode::ipv4) {
             context->post([this, addr, callback]() {
-                std::shared_ptr<asio::steady_timer> timer { new asio::steady_timer(*context) };
+                std::shared_ptr<asio::steady_timer> timer {};
                 handle_ipv4_addr(addr, callback, timer, retry_times - 1);
             });
         } else {
             context->post([this, addr, callback]() {
-                std::shared_ptr<asio::steady_timer> timer { new asio::steady_timer(*context) };
+                std::shared_ptr<asio::steady_timer> timer {};
                 handle_ipv6_addr(addr, callback, timer, retry_times - 1);
             });
         }
